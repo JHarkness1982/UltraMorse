@@ -40,8 +40,8 @@
 
     let writePos = 0;
 
-    // Fade-in di 5 ms
-    const fadeSamples = Math.floor(0.005 * sampleRate);
+    // Fade-in di 10 ms
+    const fadeSamples = Math.floor(0.010 * sampleRate);
 
     for (const bit of bitstream) {
       const bitSamples = Math.floor(ut * sampleRate);
