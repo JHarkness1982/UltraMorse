@@ -62,7 +62,7 @@
   }
 
   /* ============================================================
-     ENERGIA → BIT (smoothing disattivato)
+     ENERGIA → BIT
      ============================================================ */
 
   function energyToBit(energy) {
@@ -70,23 +70,29 @@
   }
 
   /* ============================================================
-     RICONOSCIMENTO START / END (LIVE)
+     RICONOSCIMENTO START / END (LIVE, SOLO EURISTICO)
      ============================================================ */
 
   function detectStart(buffer) {
-    return buffer.includes("1111"); // 4 bit di 1 → più reattivo
+    // euristica: burst di 1 → inizio messaggio
+    return buffer.includes("1111");
   }
 
   function detectEnd(buffer) {
-    return buffer.includes("0000"); // 4 bit di 0 → più permissivo
+    // euristica: run di 0 → fine messaggio
+    return buffer.includes("0000");
   }
 
   /* ============================================================
-     DECODIFICA PAYLOAD (LIVE, VECCHIA LOGICA)
+     DECODIFICA PAYLOAD (LIVE)
      ============================================================ */
 
   function decodePayload(payloadBits) {
     payloadBits = payloadBits.replace(/[^01]/g, "");
+
+    if (payloadBits.length <= ULTRA.CHECKSUM_BITS) {
+      return "[Payload troppo corto]";
+    }
 
     const checksumBits = payloadBits.slice(-ULTRA.CHECKSUM_BITS);
     const dataBits = payloadBits.slice(0, -ULTRA.CHECKSUM_BITS);
@@ -96,17 +102,7 @@
       return "[Checksum errato]";
     }
 
-    // Placeholder finché non implementiamo la ricostruzione UT
-    const letters = dataBits.split("000");
-    let result = "";
-
-    for (const letterBits of letters) {
-      if (!letterBits) continue;
-      const char = ULTRA.BINARY_TO_CHAR[letterBits];
-      result += char || "?";
-    }
-
-    return result;
+    return ULTRA.decodeBitsToMessage(dataBits);
   }
 
   /* ============================================================
@@ -158,8 +154,10 @@
       case "ENDING":
         updateStateUI("Ending");
 
-        const endIndex = collectedBits.indexOf("0000"); // FIX
-        const payload = collectedBits.slice(0, endIndex);
+        const endIndex = collectedBits.indexOf("0000");
+        const payload = endIndex >= 0
+          ? collectedBits.slice(0, endIndex)
+          : collectedBits;
 
         const msg = decodePayload(payload);
         setLastMessage(msg);
@@ -190,6 +188,7 @@
 
   /* ============================================================
      RX BUFFERIZZATO: decodeFromBuffer(buffer, sampleRate)
+     (senza START/END, solo payload + checksum)
      ============================================================ */
 
   function goertzelEnergy(samples, sampleRate, freq) {
@@ -218,7 +217,6 @@
   function decodeFromBuffer(buffer, sampleRate) {
     const ut   = ULTRA.UT;    // es. 0.120
     const freq = ULTRA.FREQ;  // 400 Hz
-    const header = "11110";
 
     const samplesPerBit = Math.floor(ut * sampleRate);
     if (samplesPerBit <= 0) {
@@ -251,19 +249,25 @@
       bits += energies[b] > threshold ? "1" : "0";
     }
 
-    let payloadBits = "";
-    const startIndex = bits.indexOf(header);
-    if (startIndex >= 0) {
-      payloadBits = bits.slice(startIndex + header.length);
-      const lastOne = payloadBits.lastIndexOf("1");
-      if (lastOne >= 0) {
-        payloadBits = payloadBits.slice(0, lastOne + 1);
-      }
+    // Trim silenzio iniziale/finale
+    let trimmed = bits.replace(/^0+/, "").replace(/0+$/, "");
+
+    if (trimmed.length <= ULTRA.CHECKSUM_BITS) {
+      return { bits, payloadBits: "" };
+    }
+
+    const checksumBits = trimmed.slice(-ULTRA.CHECKSUM_BITS);
+    const dataBits = trimmed.slice(0, -ULTRA.CHECKSUM_BITS);
+
+    const expected = ULTRA.computeChecksumBits(dataBits);
+    if (expected !== checksumBits) {
+      // checksum errato: restituiamo comunque i bit per debug
+      return { bits, payloadBits: "" };
     }
 
     return {
       bits,
-      payloadBits
+      payloadBits: dataBits
     };
   }
 
