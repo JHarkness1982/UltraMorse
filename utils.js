@@ -7,11 +7,11 @@
    COSTANTI DEL PROTOCOLLO
    ------------------------------------------------------------ */
 
-const FREQ = 400;   // frequenza portante in ultrasuoni
-const UT   = 0.120;   // durata di un bit in secondi (100 ms per ora, robusto)
-const START_BITS = "1111111111";  // 10 bit di tono
-const END_BITS   = "0000000000";  // 10 bit di silenzio
-const CHECKSUM_BITS = 4;          // 4 bit finali
+const FREQ = 400;              // frequenza portante
+const UT   = 0.120;            // durata di un bit (120 ms)
+const START_BITS = "11110";    // header di sincronizzazione
+const END_BITS   = "0";        // stop bit singolo
+const CHECKSUM_BITS = 4;       // 4 bit finali di checksum
 
 /* ------------------------------------------------------------
    MAPPA MORSE (Ultramorse v1)
@@ -58,7 +58,7 @@ const MORSE_MAP = {
   "8": "---..",
   "9": "----.",
 
-  // Simboli
+  // Simboli utili del progetto
   ".": ".-.-.-",
   ",": "--..--",
   "?": "..--..",
@@ -68,7 +68,6 @@ const MORSE_MAP = {
   "+": ".-.-.",
   "X": "-..-",      // moltiplicazione
   ":": "---...",
-  "=": "-...-",
   "'": ".----."
 };
 
@@ -114,7 +113,7 @@ function normalizeText(input) {
   s = s.toUpperCase();
 
   // Rimuovi caratteri non supportati (tranne spazio)
-  const allowed = /[A-Z0-9\.\,\?\!\/\-\+\:=' ]/;
+  const allowed = /^[A-Z0-9\.\,\?\!\/\-\+\:X' ]$/;
   let out = "";
   for (const ch of s) {
     if (allowed.test(ch)) out += ch;
@@ -161,24 +160,21 @@ function computeChecksumBits(payloadBits) {
    UTILS VARI
    ------------------------------------------------------------ */
 
-// Restituisce true se una stringa contiene solo 0/1
 function isBinaryString(s) {
   return /^[01]+$/.test(s);
 }
 
-// Limita la lunghezza di una stringa (per UI)
 function limitString(str, max) {
   if (str.length <= max) return str;
   return "…" + str.slice(-max);
 }
 
-// Sleep async (ms)
 function sleep(ms) {
   return new Promise(res => setTimeout(res, ms));
 }
 
 /* ------------------------------------------------------------
-   ESPORTAZIONE (per sicurezza)
+   ESPORTAZIONE
    ------------------------------------------------------------ */
 
 window.ULTRA = {
