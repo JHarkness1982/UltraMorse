@@ -1,6 +1,7 @@
 /* ============================================================
-   ULTRAMORSE — audio.js (versione bufferizzata e stabile)
-   Genera un AudioBuffer completo e lo riproduce senza jitter
+   ULTRAMORSE — audio.js (versione bufferizzata TX)
+   TX: genera un AudioBuffer completo e lo riproduce
+   RX: usa ancora AnalyserNode in tempo reale
    ============================================================ */
 
 (function () {
@@ -28,15 +29,15 @@
     isTransmitting = true;
 
     const sampleRate = ctx.sampleRate;
-    const ut = ULTRA.UT; // durata di un bit in secondi
-    const freq = ULTRA.FREQ; // es. 1000 Hz per test
+    const ut   = ULTRA.UT;    // durata di un bit in secondi
+    const freq = ULTRA.FREQ;  // es. 17500 Hz (ultrasuoni)
 
     // Numero totale di campioni
     const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
 
     // Creiamo il buffer audio
     const buffer = ctx.createBuffer(1, totalSamples, sampleRate);
-    const data = buffer.getChannelData(0);
+    const data   = buffer.getChannelData(0);
 
     let writePos = 0;
 
@@ -44,7 +45,7 @@
       const bitSamples = Math.floor(ut * sampleRate);
 
       if (bit === "1") {
-        // Scriviamo una sinusoide perfetta
+        // Sinusoide perfetta alla frequenza ULTRA.FREQ
         for (let i = 0; i < bitSamples; i++) {
           const t = (writePos + i) / sampleRate;
           data[writePos + i] = Math.sin(2 * Math.PI * freq * t) * 0.9;
@@ -66,7 +67,7 @@
 
     source.start();
 
-    // Durata totale in ms
+    // Durata totale in ms (utile se vuoi mostrarla o sincronizzare UI)
     const durationMs = (totalSamples / sampleRate) * 1000;
 
     return durationMs;
@@ -74,15 +75,18 @@
 
   function stopTransmission() {
     isTransmitting = false;
+    // In questa versione non teniamo un riferimento al source,
+    // quindi lo stop "forzato" non è implementato.
+    // Se ti serve, possiamo aggiungere una variabile globale per il source.
   }
 
   /* ============================================================
-     MICROFONO + DECODER (invariati)
+     MICROFONO + DECODER LIVE (come prima)
      ============================================================ */
 
-  let micStream = null;
-  let analyser = null;
-  let freqData = null;
+  let micStream  = null;
+  let analyser   = null;
+  let freqData   = null;
   let isListening = false;
 
   async function startMic() {
@@ -126,7 +130,7 @@
     if (!ctx) return 0;
 
     const sampleRate = ctx.sampleRate;
-    const nyquist = sampleRate / 2;
+    const nyquist    = sampleRate / 2;
 
     const index = Math.min(
       freqData.length - 1,
@@ -168,4 +172,3 @@
   };
 
 })();
-
