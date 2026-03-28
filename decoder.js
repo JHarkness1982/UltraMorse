@@ -56,35 +56,16 @@
      ============================================================ */
 
   function updateDynamicThreshold(energy) {
-    // Rumore di fondo lento
     noiseFloor = noiseFloor * 0.98 + energy * 0.02;
-
-    // Soglia = rumore + offset
-    threshold = noiseFloor + 4; // offset empirico
+    threshold = noiseFloor + 4; // offset più permissivo
   }
 
   /* ============================================================
-     ENERGIA → BIT (con smoothing)
+     ENERGIA → BIT (smoothing disattivato)
      ============================================================ */
 
-  let lastBit = "0";
-  let stability = 0;
-
   function energyToBit(energy) {
-    const rawBit = energy > threshold ? "1" : "0";
-
-    // Smoothing: richiede 2 UT stabili per cambiare bit
-    if (rawBit === lastBit) {
-      stability++;
-    } else {
-      stability = 0;
-    }
-
-    if (stability >= 0) {
-      lastBit = rawBit;
-    }
-
-    return lastBit;
+    return energy > threshold ? "1" : "0";
   }
 
   /* ============================================================
@@ -92,11 +73,11 @@
      ============================================================ */
 
   function detectStart(buffer) {
-    return buffer.includes(ULTRA.START_BITS.slice(0, 6));
+    return buffer.includes("1111"); // 4 bit di 1 → più reattivo
   }
 
   function detectEnd(buffer) {
-    return buffer.includes(ULTRA.END_BITS.slice(0, 6));
+    return buffer.includes("0000"); // 4 bit di 0 → più permissivo
   }
 
   /* ============================================================
@@ -104,31 +85,22 @@
      ============================================================ */
 
   function decodePayload(payloadBits) {
-    // Rimuovi eventuali spazi o caratteri strani
     payloadBits = payloadBits.replace(/[^01]/g, "");
 
-    // Rimuovi checksum
     const checksumBits = payloadBits.slice(-ULTRA.CHECKSUM_BITS);
     const dataBits = payloadBits.slice(0, -ULTRA.CHECKSUM_BITS);
 
-    // Verifica checksum
     const expected = ULTRA.computeChecksumBits(dataBits);
     if (expected !== checksumBits) {
       return "[Checksum errato]";
     }
 
-    // Ora dobbiamo ricostruire le lettere.
-    // Ogni lettera è una sequenza di bit Morse (0/1) senza separatori.
-    // Ma nel protocollo attuale NON abbiamo ancora i separatori temporali.
-    // Per ora, assumiamo che ogni lettera sia separata da "000" (3 UT).
-    // Questo è un placeholder finché non implementiamo la ricostruzione UT completa.
-
-    const letters = dataBits.split("000"); // separatore lettere (provvisorio)
+    // Placeholder finché non implementiamo la ricostruzione UT
+    const letters = dataBits.split("000");
     let result = "";
 
     for (const letterBits of letters) {
       if (!letterBits) continue;
-
       const char = ULTRA.BINARY_TO_CHAR[letterBits];
       result += char || "?";
     }
@@ -150,8 +122,8 @@
 
     bitBuffer += bit;
     if (bitBuffer.length > 2000) {
-    bitBuffer = bitBuffer.slice(-2000);
-}
+      bitBuffer = bitBuffer.slice(-2000);
+    }
     updateBitstreamUI(bitBuffer);
 
     switch (state) {
@@ -167,7 +139,6 @@
 
       case "SYNC":
         updateStateUI("Sync");
-        // Aspetta la fine dello START
         if (!bitBuffer.endsWith("1")) {
           state = "READING";
           bitBuffer = "";
@@ -186,14 +157,12 @@
       case "ENDING":
         updateStateUI("Ending");
 
-        // Rimuovi END
-        const endIndex = collectedBits.indexOf(ULTRA.END_BITS);
+        const endIndex = collectedBits.indexOf("0000"); // FIX
         const payload = collectedBits.slice(0, endIndex);
 
         const msg = decodePayload(payload);
         setLastMessage(msg);
 
-        // Reset
         state = "IDLE";
         collectedBits = "";
         bitBuffer = "";
@@ -227,5 +196,7 @@
     stopDecoder,
     processEnergy
   };
+
+})();
 
 })();
