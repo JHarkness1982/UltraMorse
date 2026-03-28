@@ -34,7 +34,7 @@
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = "sine";
+    osc.type = "sawtooth";
     osc.frequency.value = ULTRA.FREQ;
 
     gain.gain.value = 0.0;
