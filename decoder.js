@@ -56,8 +56,8 @@
      ============================================================ */
 
   function updateDynamicThreshold(energy) {
-    noiseFloor = noiseFloor * 0.98 + energy * 0.02;
-    threshold = noiseFloor + 4; // offset più permissivo
+    noiseFloor = noiseFloor * 0.85 + energy * 0.15;
+    threshold = noiseFloor + 10;
   }
 
   /* ============================================================
