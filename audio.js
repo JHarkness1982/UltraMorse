@@ -1,5 +1,6 @@
 /* ============================================================
-   ULTRAMORSE — audio.js (TX bufferizzato con sawtooth + fade-in)
+   ULTRAMORSE — audio.js (TX bufferizzato con sine + fade-in)
+   Versione ottimizzata per 400 Hz, pulita e senza click
    ============================================================ */
 
 (function () {
@@ -27,8 +28,8 @@
     isTransmitting = true;
 
     const sampleRate = ctx.sampleRate;
-    const ut   = ULTRA.UT;    // durata bit (es. 0.120)
-    const freq = ULTRA.FREQ;  // 9000 Hz
+    const ut   = ULTRA.UT;    // es. 0.120
+    const freq = ULTRA.FREQ;  // 400 Hz
 
     const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
 
@@ -48,19 +49,15 @@
         for (let i = 0; i < bitSamples; i++) {
           const t = (writePos + i) / sampleRate;
 
-          // fase in cicli
-          const phase = freq * t;
-          const frac  = phase - Math.floor(phase);
+          // sinusoide pura
+          let sample = Math.sin(2 * Math.PI * freq * t);
 
-          // sawtooth centrata [-1, 1]
-          let sample = 2 * frac - 1;
-
-          // fade-in
+          // fade-in morbido
           if (i < fadeSamples) {
             sample *= (i / fadeSamples);
           }
 
-          data[writePos + i] = sample * 0.5; // volume morbido
+          data[writePos + i] = sample * 0.6; // volume morbido e pulito
         }
 
       } else {
