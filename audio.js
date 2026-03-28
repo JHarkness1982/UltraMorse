@@ -43,6 +43,7 @@
 
     const startTime = ctx.currentTime + 0.05;
     osc.start(startTime);
+    gain.gain.setValueAtTime(0.0, startTime);
 
     let t = startTime;
     const ut = ULTRA.UT;
