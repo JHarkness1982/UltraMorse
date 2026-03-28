@@ -1,6 +1,6 @@
 /* ============================================================
    ULTRAMORSE — audio.js (TX bufferizzato con sine + fade-in)
-   Versione ottimizzata per 400 Hz, pulita e senza click
+   Versione corretta con fase continua (perfetta a 48000 Hz)
    ============================================================ */
 
 (function () {
@@ -27,9 +27,9 @@
     const ctx = await ensureAudioContext();
     isTransmitting = true;
 
-    const sampleRate = ctx.sampleRate;
-    const ut   = ULTRA.UT;    // es. 0.120
-    const freq = ULTRA.FREQ;  // 400 Hz
+    const sampleRate = ctx.sampleRate; // 48000 Hz
+    const ut   = ULTRA.UT;             // es. 0.120
+    const freq = ULTRA.FREQ;           // 400 Hz
 
     const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
 
@@ -41,23 +41,27 @@
     // Fade-in di 10 ms
     const fadeSamples = Math.floor(0.010 * sampleRate);
 
+    // 🔥 fase continua
+    let phase = 0;
+    const phaseIncrement = 2 * Math.PI * freq / sampleRate;
+
     for (const bit of bitstream) {
       const bitSamples = Math.floor(ut * sampleRate);
 
       if (bit === "1") {
 
         for (let i = 0; i < bitSamples; i++) {
-          const t = (writePos + i) / sampleRate;
 
-          // sinusoide pura
-          let sample = Math.sin(2 * Math.PI * freq * t);
+          // sinusoide con fase continua
+          let sample = Math.sin(phase);
+          phase += phaseIncrement;
 
-          // fade-in morbido
+          // fade-in
           if (i < fadeSamples) {
             sample *= (i / fadeSamples);
           }
 
-          data[writePos + i] = sample * 0.6; // volume morbido e pulito
+          data[writePos + i] = sample * 0.6;
         }
 
       } else {
@@ -175,3 +179,4 @@
   };
 
 })();
+
