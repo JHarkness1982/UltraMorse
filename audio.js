@@ -1,6 +1,7 @@
 /* ============================================================
    ULTRAMORSE — audio.js (TX bufferizzato con sine + fade-in)
    Versione corretta con fase continua (perfetta a 48000 Hz)
+   + recordBuffer(durationMs) per RX bufferizzato
    ============================================================ */
 
 (function () {
@@ -41,7 +42,7 @@
     // Fade-in di 10 ms
     const fadeSamples = Math.floor(0.010 * sampleRate);
 
-    // 🔥 fase continua
+    // fase continua
     let phase = 0;
     const phaseIncrement = 2 * Math.PI * freq / sampleRate;
 
@@ -150,7 +151,7 @@
   let listenInterval = null;
 
   function startListening(callback) {
-    if (!isListening) return;
+    if (!isListening || !analyser) return;
 
     if (listenInterval) clearInterval(listenInterval);
 
@@ -167,6 +168,65 @@
     }
   }
 
+  /* ============================================================
+     RX BUFFERIZZATO: recordBuffer(durationMs)
+     ============================================================ */
+
+  async function recordBuffer(durationMs) {
+    const ctx = await ensureAudioContext();
+    const sampleRate = ctx.sampleRate;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      video: false
+    });
+
+    const source = ctx.createMediaStreamSource(stream);
+
+    const bufferSize = 4096;
+    const recorder = ctx.createScriptProcessor(bufferSize, 1, 1);
+
+    const chunks = [];
+    let recording = true;
+
+    recorder.onaudioprocess = function (e) {
+      if (!recording) return;
+      const input = e.inputBuffer.getChannelData(0);
+      const copy = new Float32Array(input.length);
+      copy.set(input);
+      chunks.push(copy);
+    };
+
+    source.connect(recorder);
+    recorder.connect(ctx.destination);
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        recording = false;
+
+        recorder.disconnect();
+        source.disconnect();
+        stream.getTracks().forEach(t => t.stop());
+
+        let totalLength = 0;
+        for (const c of chunks) totalLength += c.length;
+
+        const result = new Float32Array(totalLength);
+        let offset = 0;
+        for (const c of chunks) {
+          result.set(c, offset);
+          offset += c.length;
+        }
+
+        resolve(result);
+      }, durationMs);
+    });
+  }
+
   window.ULTRA_AUDIO = {
     ensureAudioContext,
     transmitBits,
@@ -175,8 +235,8 @@
     stopMic,
     startListening,
     stopListeningLoop,
-    sampleUltrasonicEnergy
+    sampleUltrasonicEnergy,
+    recordBuffer
   };
 
 })();
-
