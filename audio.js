@@ -57,7 +57,7 @@
       if (!isTransmitting) break;
 
       if (b === "1") {
-        gain.gain.setValueAtTime(1.8, t);   // tono acceso
+        gain.gain.setValueAtTime(0.8, t);   // tono acceso
       } else {
         gain.gain.setValueAtTime(0.0, t);   // tono spento
       }
