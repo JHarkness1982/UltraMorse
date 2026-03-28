@@ -9,8 +9,8 @@
 
 const FREQ = 400;              // frequenza portante
 const UT   = 0.120;            // durata di un bit (120 ms)
-const START_BITS = "11110";    // header di sincronizzazione
-const END_BITS   = "0";        // stop bit singolo
+const START_BITS = "";    // header di sincronizzazione
+const END_BITS   = "";        // stop bit singolo
 const CHECKSUM_BITS = 4;       // 4 bit finali di checksum
 
 /* ------------------------------------------------------------
