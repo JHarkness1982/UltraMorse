@@ -1,6 +1,6 @@
 /* ============================================================
-   ULTRAMORSE — audio.js (versione stabile con beep udibile)
-   Trasmissione con loop temporizzato reale + onda sinusoidale
+   ULTRAMORSE — audio.js (versione bufferizzata e stabile)
+   Genera un AudioBuffer completo e lo riproduce senza jitter
    ============================================================ */
 
 (function () {
@@ -18,7 +18,7 @@
   }
 
   /* ============================================================
-     TRASMISSIONE BITSTREAM (versione stabile)
+     TRASMISSIONE: bitstream → AudioBuffer → riproduzione
      ============================================================ */
 
   let isTransmitting = false;
@@ -27,37 +27,49 @@
     const ctx = await ensureAudioContext();
     isTransmitting = true;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const sampleRate = ctx.sampleRate;
+    const ut = ULTRA.UT; // durata di un bit in secondi
+    const freq = ULTRA.FREQ; // es. 1000 Hz per test
 
-    // Frequenza udibile per test diagnostico
-    osc.type = "sine";
-    osc.frequency.value = ULTRA.FREQ;  // es. 1000 Hz
+    // Numero totale di campioni
+    const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
 
-    gain.gain.setValueAtTime(0.0, ctx.currentTime);
+    // Creiamo il buffer audio
+    const buffer = ctx.createBuffer(1, totalSamples, sampleRate);
+    const data = buffer.getChannelData(0);
 
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
+    let writePos = 0;
 
-    const ut_ms = ULTRA.UT * 1000;
-    let i = 0;
+    for (const bit of bitstream) {
+      const bitSamples = Math.floor(ut * sampleRate);
 
-    return new Promise(resolve => {
-      const interval = setInterval(() => {
-        if (!isTransmitting || i >= bitstream.length) {
-          gain.gain.setValueAtTime(0.0, ctx.currentTime);
-          clearInterval(interval);
-          osc.stop(ctx.currentTime + 0.05);
-          isTransmitting = false;
-          resolve(bitstream.length * ut_ms);
-          return;
+      if (bit === "1") {
+        // Scriviamo una sinusoide perfetta
+        for (let i = 0; i < bitSamples; i++) {
+          const t = (writePos + i) / sampleRate;
+          data[writePos + i] = Math.sin(2 * Math.PI * freq * t) * 0.9;
         }
+      } else {
+        // Silenzio
+        for (let i = 0; i < bitSamples; i++) {
+          data[writePos + i] = 0;
+        }
+      }
 
-        const b = bitstream[i++];
-        gain.gain.setValueAtTime(b === "1" ? 1.0 : 0.0, ctx.currentTime);
+      writePos += bitSamples;
+    }
 
-      }, ut_ms);
-    });
+    // Riproduciamo il buffer
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+
+    source.start();
+
+    // Durata totale in ms
+    const durationMs = (totalSamples / sampleRate) * 1000;
+
+    return durationMs;
   }
 
   function stopTransmission() {
@@ -116,7 +128,6 @@
     const sampleRate = ctx.sampleRate;
     const nyquist = sampleRate / 2;
 
-    // indice FFT sicuro
     const index = Math.min(
       freqData.length - 1,
       Math.max(0, Math.round(ULTRA.FREQ / nyquist * freqData.length))
@@ -157,3 +168,4 @@
   };
 
 })();
+
