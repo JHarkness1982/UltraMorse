@@ -157,6 +157,27 @@ function computeChecksumBits(payloadBits) {
 }
 
 /* ------------------------------------------------------------
+   DECODIFICA BITSTREAM → TESTO (coerente con decoder.js)
+   ------------------------------------------------------------ */
+
+function decodeBitsToMessage(payloadBits) {
+  // Sanity: tieni solo 0/1
+  payloadBits = payloadBits.replace(/[^01]/g, "");
+
+  // Stessa logica del decoder: split su "000" e mappa via BINARY_TO_CHAR
+  const letters = payloadBits.split("000");
+  let result = "";
+
+  for (const letterBits of letters) {
+    if (!letterBits) continue;
+    const ch = BINARY_TO_CHAR[letterBits];
+    result += ch || "?";
+  }
+
+  return result;
+}
+
+/* ------------------------------------------------------------
    UTILS VARI
    ------------------------------------------------------------ */
 
@@ -189,6 +210,7 @@ window.ULTRA = {
   morseToBinary,
   binaryToMorse,
   computeChecksumBits,
+  decodeBitsToMessage,
   isBinaryString,
   limitString,
   sleep
