@@ -1,6 +1,5 @@
 /* ============================================================
-   ULTRAMORSE — audio.js (TX bufferizzato + fade-in)
-   Genera un AudioBuffer completo e lo riproduce senza click
+   ULTRAMORSE — audio.js (TX bufferizzato con sawtooth + fade-in)
    ============================================================ */
 
 (function () {
@@ -28,13 +27,11 @@
     isTransmitting = true;
 
     const sampleRate = ctx.sampleRate;
-    const ut   = ULTRA.UT;    // durata di un bit in secondi
-    const freq = ULTRA.FREQ;  // es. 15000 Hz (ultrasuoni)
+    const ut   = ULTRA.UT;    // durata bit (es. 0.120)
+    const freq = ULTRA.FREQ;  // 9000 Hz
 
-    // Numero totale di campioni
     const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
 
-    // Creiamo il buffer audio
     const buffer = ctx.createBuffer(1, totalSamples, sampleRate);
     const data   = buffer.getChannelData(0);
 
@@ -47,20 +44,27 @@
       const bitSamples = Math.floor(ut * sampleRate);
 
       if (bit === "1") {
-        // Sinusoide perfetta con fade-in
+
         for (let i = 0; i < bitSamples; i++) {
           const t = (writePos + i) / sampleRate;
-          let sample = Math.sin(2 * Math.PI * freq * t);
 
-          // Fade-in per evitare click
+          // fase in cicli
+          const phase = freq * t;
+          const frac  = phase - Math.floor(phase);
+
+          // sawtooth centrata [-1, 1]
+          let sample = 2 * frac - 1;
+
+          // fade-in
           if (i < fadeSamples) {
             sample *= (i / fadeSamples);
           }
 
-          data[writePos + i] = sample * 0.9;
+          data[writePos + i] = sample * 0.5; // volume morbido
         }
+
       } else {
-        // Silenzio
+        // bit = 0 → silenzio
         for (let i = 0; i < bitSamples; i++) {
           data[writePos + i] = 0;
         }
@@ -69,16 +73,12 @@
       writePos += bitSamples;
     }
 
-    // Riproduciamo il buffer
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
-
     source.start();
 
-    // Durata totale in ms
     const durationMs = (totalSamples / sampleRate) * 1000;
-
     return durationMs;
   }
 
