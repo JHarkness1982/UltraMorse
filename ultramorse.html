@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<title>Ultramorse</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #05060a;
+    --fg: #f5f5f5;
+    --accent: #4caf50;
+    --accent-soft: #2e7d32;
+    --danger: #e53935;
+    --muted: #888;
+    --card: #11141b;
+    --border: #222633;
+    --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-main);
+    background: radial-gradient(circle at top, #151a24 0, #05060a 55%);
+    color: var(--fg);
+    display: flex;
+    justify-content: center;
+  }
+  .app {
+    width: 100%;
+    max-width: 480px;
+    padding: 16px 12px 24px;
+  }
+  h1 {
+    margin: 4px 0 12px;
+    font-size: 1.6rem;
+    text-align: center;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .row > * {
+    flex: 1;
+  }
+  .toggle-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .toggle {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(10,12,18,0.9);
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle.active {
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .mode-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin: 4px 2px 4px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(5,7,12,0.95);
+    color: var(--fg);
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+  textarea:disabled {
+    opacity: 0.7;
+  }
+  .btn {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    color: #fff;
+  }
+  .btn-secondary {
+    background: rgba(10,12,18,0.9);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+  }
+  .status {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    min-height: 1.2em;
+  }
+  .status strong {
+    color: var(--accent);
+  }
+  .status.error strong {
+    color: var(--danger);
+  }
+  .pill-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .pill {
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(5,7,12,0.9);
+  }
+  .pill span {
+    color: var(--fg);
+  }
+  .card {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: radial-gradient(circle at top left, #1a2130 0, #05060a 55%);
+    padding: 10px 10px 12px;
+    margin-bottom: 10px;
+  }
+  .card-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .small {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Ultramorse</h1>
+  <div class="subtitle">Morse binario ultrasonico · v1</div>
+
+  <div class="row">
+    <div class="toggle" id="modeIn">Audio IN</div>
+    <div class="toggle active" id="modeOut">Audio OUT</div>
+  </div>
+
+  <div class="toggle-group">
+    <div class="toggle active" id="liveMode">Live</div>
+    <div class="toggle" id="fileMode">File</div>
+  </div>
+
+  <div class="mode-label" id="textLabel">Testo da trasmettere</div>
+  <textarea id="textArea" placeholder="Scrivi qui il messaggio da trasmettere..."></textarea>
+
+  <button class="btn btn-primary" id="btnAction">Trasmetti (Live)</button>
+  <button class="btn btn-secondary" id="btnListen">Ascolta (Live)</button>
+
+  <div class="status" id="status"></div>
+
+  <div class="pill-row">
+    <div class="pill">UT: <span>20 ms</span></div>
+    <div class="pill">Freq: <span>19.5 kHz</span></div>
+    <div class="pill">Alfabeto: <span>A–Z, 0–9, . , ? ! / - + x : = '</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Note</div>
+    <div class="small">
+      • Live OUT: PC → smartphone per i primi test.<br/>
+      • Live IN: decoder sperimentale, sensibile a rumore e device.<br/>
+      • Accenti: trasformati in vocale + apostrofo (es. REALTÀ → REALTA').<br/>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================
+   PARAMETRI PROTOCOLLO
+   =========================== */
+const UT = 0.020; // 20 ms
+const FREQ = 19500; // Hz
+const START_BITS = "1111111111"; // 10 bit di tono
+const END_BITS   = "0000000000"; // 10 bit di silenzio
+const CHECKSUM_BITS = 4; // 4 bit finali
+
+/* ===========================
+   ALFABETO MORSE → BINARIO
+   =========================== */
+const morseMap = {
+  // Lettere
+  "A": ".-",
+  "B": "-...",
+  "C": "-.-.",
+  "D": "-..",
+  "E": ".",
+  "F": "..-.",
+  "G": "--.",
+  "H": "....",
+  "I": "..",
+  "J": ".---",
+  "K": "-.-",
+  "L": ".-..",
+  "M": "--",
+  "N": "-.",
+  "O": "---",
+  "P": ".--.",
+  "Q": "--.-",
+  "R": ".-.",
+  "S": "...",
+  "T": "-",
+  "U": "..-",
+  "V": "...-",
+  "W": ".--",
+  "X": "-..-",
+  "Y": "-.--",
+  "Z": "--..",
+  // Numeri
+  "0": "-----",
+  "1": ".----",
+  "2": "..---",
+  "3": "...--",
+  "4": "....-",
+  "5": ".....",
+  "6": "-....",
+  "7": "--...",
+  "8": "---..",
+  "9": "----.",
+  // Simboli
+  ".": ".-.-.-",
+  ",": "--..--",
+  "?": "..--..",
+  "!": "-.-.--",
+  "/": "-..-.",
+  "-": "-....-",
+  "+": ".-.-.",
+  "X": "-..-",   // usiamo la lettera X come simbolo di moltiplicazione
+  ":": "---...",
+  "=": "-...-",
+  "'": ".----."
+};
+
+// Reverse map per il decoder
+const binaryToChar = {};
+for (const [ch, morse] of Object.entries(morseMap)) {
+  const bin = morse.replace(/\./g, "0").replace(/-/g, "1");
+  binaryToChar[bin] = ch;
+}
+
+/* ===========================
+   NORMALIZZAZIONE TESTO
+   =========================== */
+function normalizeText(input) {
+  let s = input.normalize("NFC");
+
+  // Accenti → vocale + apostrofo
+  const accentMap = {
+    "à": "a'",
+    "è": "e'",
+    "é": "e'",
+    "ì": "i'",
+    "ò": "o'",
+    "ó": "o'",
+    "ù": "u'"
+  };
+  s = s.replace(/[àèéìòóù]/gi, m => {
+    const lower = m.toLowerCase();
+    let rep = accentMap[lower] || m;
+    if (m === m.toUpperCase()) rep = rep.toUpperCase();
+    return rep;
+  });
+
+  // Tutto maiuscolo
+  s = s.toUpperCase();
+
+  // Rimuovi caratteri non supportati (tranne spazio)
+  const allowed = /[A-Z0-9\.\,\?\!\/\-\+\:=' ]/;
+  let out = "";
+  for (const ch of s) {
+    if (allowed.test(ch)) out += ch;
+  }
+
+  // Comprimi spazi multipli
+  out = out.replace(/\s+/g, " ").trim();
+
+  return out;
+}
+
+/* ===========================
+   ENCODER: TESTO → BITSTREAM
+   =========================== */
+
+// Costruisce il payload binario (senza START/END/CHECKSUM)
+function textToPayloadBits(text) {
+  const norm = normalizeText(text);
+  if (!norm) return "";
+
+  const words = norm.split(" ");
+  let bits = "";
+
+  words.forEach((word, wIndex) => {
+    const chars = word.split("");
+    chars.forEach((ch, cIndex) => {
+      const morse = morseMap[ch];
+      if (!morse) return;
+      const bin = morse.replace(/\./g, "0").replace(/-/g, "1");
+
+      // bit dentro la lettera, separati da "silenzio simboli" (che gestiremo come gap temporale, non come bit)
+      bits += bin;
+
+      // separatore lettere (solo se non è l'ultima lettera della parola)
+      if (cIndex < chars.length - 1) {
+        // non aggiungiamo bit "0" qui: il silenzio è temporale
+        bits += "|L|"; // marker logico per separatore lettera
+      }
+    });
+
+    // separatore parole (solo se non è l'ultima parola)
+    if (wIndex < words.length - 1) {
+      bits += "|W|"; // marker logico per separatore parola
+    }
+  });
+
+  return bits;
+}
+
+// Converte la rappresentazione logica in una sequenza di "bit temporali":
+// "1" = tono 1 UT, "0" = silenzio 1 UT
+function logicalToTemporalBits(logicalBits) {
+  // Regole:
+  // - bit (0/1) → 1 UT di tono (1)
+  // - sep simboli (tra bit di una lettera) → 2 UT di silenzio (00)
+  //   (qui li deduciamo: tra ogni bit di una lettera c'è 2 UT di silenzio)
+  // - sep lettere → 3 UT di silenzio (000)
+  // - sep parole → 6 UT di silenzio (000000)
+  //
+  // Per semplicità: i marker |L| e |W| li traduciamo in blocchi di 0.
+  let out = "";
+  let i = 0;
+  while (i < logicalBits.length) {
+    if (logicalBits.startsWith("|L|", i)) {
+      out += "000"; // 3 UT di silenzio tra lettere
+      i += 3;
+    } else if (logicalBits.startsWith("|W|", i)) {
+      out += "000000"; // 6 UT di silenzio tra parole
+      i += 3;
+    } else {
+      const b = logicalBits[i];
+      if (b === "0" || b === "1") {
+        // 1 UT di tono per ogni bit
+        out += "1"; // tono
+        // dopo ogni bit di una lettera, se il prossimo è ancora un bit, aggiungeremmo 2 UT di silenzio,
+        // ma per semplicità qui non distinguiamo intra-lettera: la separazione temporale reale
+        // la gestiremo con la durata UT costante. Manteniamo il modello semplice:
+        // 1 = tono, 0 = silenzio. La struttura fine la affineremo in una versione successiva.
+      }
+      i++;
+    }
+  }
+  return out;
+}
+
+// Calcola checksum (somma bit payload mod 16)
+function computeChecksumBits(payloadBits) {
+  let sum = 0;
+  for (const b of payloadBits) {
+    if (b === "1") sum++;
+  }
+  const mod = sum % 16;
+  let bin = mod.toString(2);
+  while (bin.length < CHECKSUM_BITS) bin = "0" + bin;
+  return bin;
+}
+
+// Costruisce il messaggio completo (START + payload + END + checksum)
+function buildMessageBits(text) {
+  const logical = textToPayloadBits(text);
+  if (!logical) return "";
+
+  // Per ora usiamo direttamente i bit logici come payload "astratto"
+  // e il decoder farà il percorso inverso. La parte temporale reale
+  // la gestiamo solo a livello audio (tono/silenzio).
+  const payloadBits = logical.replace(/\|L\||\|W\|/g, ""); // per il checksum consideriamo solo i bit
+  const checksum = computeChecksumBits(payloadBits);
+
+  const full = START_BITS + payloadBits + END_BITS + checksum;
+  return full;
+}
+
+/* ===========================
+   AUDIO: TRASMISSIONE
+   =========================== */
+let audioCtx = null;
+let isTransmitting = false;
+
+async function ensureAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+  }
+}
+
+async function transmitMessage(text) {
+  const bits = buildMessageBits(text);
+  if (!bits) {
+    setStatus("Nessun testo valido da trasmettere.", true);
+    return;
+  }
+
+  await ensureAudioContext();
+  isTransmitting = true;
+  setStatus("Trasmissione in corso...", false);
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = FREQ;
+  gain.gain.value = 0.0;
+  osc.connect(gain).connect(audioCtx.destination);
+  const startTime = audioCtx.currentTime + 0.05;
+  osc.start(startTime);
+
+  let t = startTime;
+  const ut = UT;
+
+  for (const b of bits) {
+    if (!isTransmitting) break;
+    if (b === "1") {
+      gain.gain.setValueAtTime(1.0, t);
+    } else {
+      gain.gain.setValueAtTime(0.0, t);
+    }
+    t += ut;
+  }
+
+  gain.gain.setValueAtTime(0.0, t);
+  osc.stop(t + 0.05);
+
+  const totalMs = (t - startTime) * 1000;
+  setStatus(`Trasmissione completata (~${totalMs.toFixed(0)} ms).`, false);
+  isTransmitting = false;
+}
+
+/* ===========================
+   AUDIO: RICEZIONE (SPERIMENTALE)
+   =========================== */
+let isListening = false;
+let micStream = null;
+let analyser = null;
+let listenInterval = null;
+
+async function startListening() {
+  if (isListening) return;
+  await ensureAudioContext();
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (e) {
+    setStatus("Accesso al microfono negato o non disponibile.", true);
+    return;
+  }
+
+  const source = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+
+  isListening = true;
+  setStatus("Ascolto attivo (sperimentale)...", false);
+
+  const buffer = new Uint8Array(analyser.frequencyBinCount);
+  const sampleUT = UT; // campioniamo ogni UT
+
+  listenInterval = setInterval(() => {
+    if (!isListening) return;
+    analyser.getByteFrequencyData(buffer);
+
+    // Stima molto grezza dell'energia in banda alta
+    const nyquist = audioCtx.sampleRate / 2;
+    const targetFreq = FREQ;
+    const index = Math.round(targetFreq / nyquist * buffer.length);
+    const amp = buffer[index] || 0;
+
+    // Qui potremmo costruire un bitstream grezzo basato su soglia,
+    // ma per ora ci limitiamo a mostrare che stiamo ricevendo qualcosa.
+    // La vera decodifica richiederà un po' di tuning empirico.
+    // Per ora: se amp > soglia, consideriamo "tono presente".
+    // Questo è solo un placeholder per i test iniziali.
+  }, sampleUT * 1000);
+}
+
+function stopListening() {
+  isListening = false;
+  if (listenInterval) {
+    clearInterval(listenInterval);
+    listenInterval = null;
+  }
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  setStatus("Ascolto fermato.", false);
+}
+
+/* ===========================
+   UI
+   =========================== */
+const modeInBtn = document.getElementById("modeIn");
+const modeOutBtn = document.getElementById("modeOut");
+const liveModeBtn = document.getElementById("liveMode");
+const fileModeBtn = document.getElementById("fileMode");
+const textArea = document.getElementById("textArea");
+const textLabel = document.getElementById("textLabel");
+const btnAction = document.getElementById("btnAction");
+const btnListen = document.getElementById("btnListen");
+const statusEl = document.getElementById("status");
+
+let currentDirection = "OUT"; // "IN" o "OUT"
+let currentMode = "LIVE";     // "LIVE" o "FILE"
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg || "";
+  statusEl.className = "status" + (isError ? " error" : "");
+}
+
+function updateUI() {
+  if (currentDirection === "OUT") {
+    modeOutBtn.classList.add("active");
+    modeInBtn.classList.remove("active");
+    textArea.disabled = false;
+    textLabel.textContent = "Testo da trasmettere";
+    btnAction.textContent = currentMode === "LIVE" ? "Trasmetti (Live)" : "Genera file (stub)";
+  } else {
+    modeInBtn.classList.add("active");
+    modeOutBtn.classList.remove("active");
+    textArea.disabled = true;
+    textLabel.textContent = "Testo ricevuto (decoder sperimentale)";
+    btnAction.textContent = "—";
+  }
+
+  if (currentMode === "LIVE") {
+    liveModeBtn.classList.add("active");
+    fileModeBtn.classList.remove("active");
+  } else {
+    fileModeBtn.classList.add("active");
+    liveModeBtn.classList.remove("active");
+  }
+}
+
+modeOutBtn.addEventListener("click", () => {
+  currentDirection = "OUT";
+  updateUI();
+});
+
+modeInBtn.addEventListener("click", () => {
+  currentDirection = "IN";
+  updateUI();
+});
+
+liveModeBtn.addEventListener("click", () => {
+  currentMode = "LIVE";
+  updateUI();
+});
+
+fileModeBtn.addEventListener("click", () => {
+  currentMode = "FILE";
+  updateUI();
+});
+
+btnAction.addEventListener("click", async () => {
+  if (currentDirection === "OUT" && currentMode === "LIVE") {
+    const text = textArea.value;
+    if (!text.trim()) {
+      setStatus("Scrivi un messaggio prima di trasmettere.", true);
+      return;
+    }
+    await transmitMessage(text);
+  } else {
+    setStatus("Questa modalità è ancora uno stub.", false);
+  }
+});
+
+btnListen.addEventListener("click", async () => {
+  if (!isListening) {
+    await startListening();
+    btnListen.textContent = "Ferma ascolto";
+  } else {
+    stopListening();
+    btnListen.textContent = "Ascolta (Live)";
+  }
+});
+
+updateUI();
+setStatus("Pronto. Prova: PC → smartphone in Live OUT.", false);
+</script>
+</body>
+</html>
