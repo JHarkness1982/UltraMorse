@@ -60,7 +60,7 @@
     noiseFloor = noiseFloor * 0.98 + energy * 0.02;
 
     // Soglia = rumore + offset
-    threshold = noiseFloor + 6; // offset empirico
+    threshold = noiseFloor + 4; // offset empirico
   }
 
   /* ============================================================
@@ -80,7 +80,7 @@
       stability = 0;
     }
 
-    if (stability >= 1) {
+    if (stability >= 0) {
       lastBit = rawBit;
     }
 
@@ -92,11 +92,11 @@
      ============================================================ */
 
   function detectStart(buffer) {
-    return buffer.includes(ULTRA.START_BITS);
+    return buffer.includes(ULTRA.START_BITS.slice(0, 6));
   }
 
   function detectEnd(buffer) {
-    return buffer.includes(ULTRA.END_BITS);
+    return buffer.includes(ULTRA.END_BITS.slice(0, 6));
   }
 
   /* ============================================================
@@ -149,6 +149,9 @@
     const bit = energyToBit(energy);
 
     bitBuffer += bit;
+    if (bitBuffer.length > 2000) {
+    bitBuffer = bitBuffer.slice(-2000);
+}
     updateBitstreamUI(bitBuffer);
 
     switch (state) {
