@@ -1,7 +1,6 @@
 /* ============================================================
-   ULTRAMORSE — audio.js (versione bufferizzata TX)
-   TX: genera un AudioBuffer completo e lo riproduce
-   RX: usa ancora AnalyserNode in tempo reale
+   ULTRAMORSE — audio.js (TX bufferizzato + fade-in)
+   Genera un AudioBuffer completo e lo riproduce senza click
    ============================================================ */
 
 (function () {
@@ -30,7 +29,7 @@
 
     const sampleRate = ctx.sampleRate;
     const ut   = ULTRA.UT;    // durata di un bit in secondi
-    const freq = ULTRA.FREQ;  // es. 17500 Hz (ultrasuoni)
+    const freq = ULTRA.FREQ;  // es. 15000 Hz (ultrasuoni)
 
     // Numero totale di campioni
     const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
@@ -41,14 +40,24 @@
 
     let writePos = 0;
 
+    // Fade-in di 5 ms
+    const fadeSamples = Math.floor(0.005 * sampleRate);
+
     for (const bit of bitstream) {
       const bitSamples = Math.floor(ut * sampleRate);
 
       if (bit === "1") {
-        // Sinusoide perfetta alla frequenza ULTRA.FREQ
+        // Sinusoide perfetta con fade-in
         for (let i = 0; i < bitSamples; i++) {
           const t = (writePos + i) / sampleRate;
-          data[writePos + i] = Math.sin(2 * Math.PI * freq * t) * 0.9;
+          let sample = Math.sin(2 * Math.PI * freq * t);
+
+          // Fade-in per evitare click
+          if (i < fadeSamples) {
+            sample *= (i / fadeSamples);
+          }
+
+          data[writePos + i] = sample * 0.9;
         }
       } else {
         // Silenzio
@@ -67,7 +76,7 @@
 
     source.start();
 
-    // Durata totale in ms (utile se vuoi mostrarla o sincronizzare UI)
+    // Durata totale in ms
     const durationMs = (totalSamples / sampleRate) * 1000;
 
     return durationMs;
@@ -75,13 +84,10 @@
 
   function stopTransmission() {
     isTransmitting = false;
-    // In questa versione non teniamo un riferimento al source,
-    // quindi lo stop "forzato" non è implementato.
-    // Se ti serve, possiamo aggiungere una variabile globale per il source.
   }
 
   /* ============================================================
-     MICROFONO + DECODER LIVE (come prima)
+     MICROFONO + DECODER LIVE (ancora invariato)
      ============================================================ */
 
   let micStream  = null;
