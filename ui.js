@@ -23,6 +23,11 @@
 
   const statusEl = document.getElementById("status");
 
+  // Input file invisibile
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "audio/*";
+
   /* ------------------------------------------------------------
      STATO APP
      ------------------------------------------------------------ */
@@ -64,7 +69,7 @@
   modeInBtn.onclick = () => {
     mode = "IN";
     toggleActive(modeInBtn, modeOutBtn);
-    textLabel.textContent = "Decoder (Live)";
+    textLabel.textContent = "Decoder (Live / File)";
     textArea.disabled = true;
     btnAction.style.display = "none";
     btnListen.style.display = "block";
@@ -72,7 +77,7 @@
   };
 
   /* ------------------------------------------------------------
-     MODALITÀ LIVE / FILE (per ora solo LIVE)
+     MODALITÀ LIVE / FILE
      ------------------------------------------------------------ */
 
   liveModeBtn.onclick = () => {
@@ -84,7 +89,7 @@
   fileModeBtn.onclick = () => {
     inputMode = "FILE";
     toggleActive(fileModeBtn, liveModeBtn);
-    setStatus("Modalità File non ancora implementata.");
+    setStatus("Modalità File attiva.");
   };
 
   /* ------------------------------------------------------------
@@ -127,10 +132,18 @@
   };
 
   /* ------------------------------------------------------------
-     ASCOLTO (IN)
+     ASCOLTO LIVE (IN)
      ------------------------------------------------------------ */
 
   btnListen.onclick = async () => {
+
+    if (inputMode === "FILE") {
+      // FILE MODE
+      fileInput.click();
+      return;
+    }
+
+    // LIVE MODE
     if (isListening) {
       stopListening();
       return;
@@ -164,10 +177,43 @@
   }
 
   /* ------------------------------------------------------------
+     FILE MODE — DECODIFICA BUFFERIZZATA
+     ------------------------------------------------------------ */
+
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    setStatus("Caricamento file…");
+
+    const arrayBuffer = await file.arrayBuffer();
+    const ctx = await ULTRA_AUDIO.ensureAudioContext();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    const samples = audioBuffer.getChannelData(0);
+
+    setStatus("Decodifica in corso…");
+
+    const { bits, payloadBits } = ULTRA_DECODER.decodeFromBuffer(samples, ctx.sampleRate);
+
+    if (!payloadBits) {
+      setStatus("Nessun header trovato nel file.", true);
+      return;
+    }
+
+    // Decodifica Morse (già gestita in utils.js)
+    const message = ULTRA.decodeBitsToMessage
+      ? ULTRA.decodeBitsToMessage(payloadBits)
+      : payloadBits;
+
+    textArea.value = message;
+    setStatus("Decodifica completata.");
+  };
+
+  /* ------------------------------------------------------------
      INIZIALIZZAZIONE
      ------------------------------------------------------------ */
 
-  // Modalità iniziale: OUT + LIVE
   btnListen.style.display = "none";
   setStatus("Pronto.");
 
