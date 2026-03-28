@@ -1,15 +1,11 @@
 /* ============================================================
-   ULTRAMORSE — audio.js
-   Gestione audio OUT (trasmissione) e IN (microfono)
+   ULTRAMORSE — audio.js (versione stabile con beep udibile)
+   Trasmissione con loop temporizzato reale + onda sinusoidale
    ============================================================ */
 
 (function () {
 
   let audioCtx = null;
-
-  /* ============================================================
-     AUDIO CONTEXT
-     ============================================================ */
 
   async function ensureAudioContext() {
     if (!audioCtx) {
@@ -22,7 +18,7 @@
   }
 
   /* ============================================================
-     TRASMISSIONE BITSTREAM → ULTRASUONO
+     TRASMISSIONE BITSTREAM (versione stabile)
      ============================================================ */
 
   let isTransmitting = false;
@@ -34,45 +30,34 @@
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    // Forma d’onda migliore per stabilità ultrasonica
-    osc.type = "sawtooth";
-    osc.frequency.value = ULTRA.FREQ;
+    // Frequenza udibile per test diagnostico
+    osc.type = "sine";
+    osc.frequency.value = ULTRA.FREQ;  // es. 1000 Hz
 
-    // Volume iniziale a zero
     gain.gain.setValueAtTime(0.0, ctx.currentTime);
 
     osc.connect(gain).connect(ctx.destination);
+    osc.start();
 
-    const startTime = ctx.currentTime + 0.05;
+    const ut_ms = ULTRA.UT * 1000;
+    let i = 0;
 
-    // Fade-in iniziale
-    gain.gain.setValueAtTime(0.0, startTime);
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (!isTransmitting || i >= bitstream.length) {
+          gain.gain.setValueAtTime(0.0, ctx.currentTime);
+          clearInterval(interval);
+          osc.stop(ctx.currentTime + 0.05);
+          isTransmitting = false;
+          resolve(bitstream.length * ut_ms);
+          return;
+        }
 
-    osc.start(startTime);
+        const b = bitstream[i++];
+        gain.gain.setValueAtTime(b === "1" ? 1.0 : 0.0, ctx.currentTime);
 
-    let t = startTime;
-    const ut = ULTRA.UT;
-
-    for (const b of bitstream) {
-      if (!isTransmitting) break;
-
-      if (b === "1") {
-        gain.gain.setValueAtTime(0.8, t);   // tono acceso
-      } else {
-        gain.gain.setValueAtTime(0.0, t);   // tono spento
-      }
-
-      t += ut;
-    }
-
-    // Fade-out finale per evitare click
-    gain.gain.linearRampToValueAtTime(0.0, t + 0.05);
-
-    osc.stop(t + 0.1);
-
-    isTransmitting = false;
-
-    return (t - startTime) * 1000; // durata in ms
+      }, ut_ms);
+    });
   }
 
   function stopTransmission() {
@@ -80,7 +65,7 @@
   }
 
   /* ============================================================
-     MICROFONO → ANALIZZATORE FFT
+     MICROFONO + DECODER (invariati)
      ============================================================ */
 
   let micStream = null;
@@ -91,19 +76,14 @@
   async function startMic() {
     const ctx = await ensureAudioContext();
 
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        },
-        video: false
-      });
-    } catch (err) {
-      console.error("Microfono negato:", err);
-      throw new Error("Accesso al microfono negato");
-    }
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      video: false
+    });
 
     const source = ctx.createMediaStreamSource(micStream);
 
@@ -119,16 +99,11 @@
 
   function stopMic() {
     isListening = false;
-
     if (micStream) {
       micStream.getTracks().forEach(t => t.stop());
       micStream = null;
     }
   }
-
-  /* ============================================================
-     CAMPIONAMENTO ENERGIA ULTRASONICA
-     ============================================================ */
 
   function sampleUltrasonicEnergy() {
     if (!isListening || !analyser) return 0;
@@ -139,19 +114,16 @@
     if (!ctx) return 0;
 
     const sampleRate = ctx.sampleRate;
-const nyquist = sampleRate / 2;
+    const nyquist = sampleRate / 2;
 
-// indice FFT corretto e sicuro
-const index = Math.round(ULTRA.FREQ / nyquist * freqData.length);
+    // indice FFT sicuro
+    const index = Math.min(
+      freqData.length - 1,
+      Math.max(0, Math.round(ULTRA.FREQ / nyquist * freqData.length))
+    );
 
-const amp = freqData[index] || 0;
-
-    return amp;
+    return freqData[index] || 0;
   }
-
-  /* ============================================================
-     LOOP DI CAMPIONAMENTO PER DECODER
-     ============================================================ */
 
   let listenInterval = null;
 
@@ -172,10 +144,6 @@ const amp = freqData[index] || 0;
       listenInterval = null;
     }
   }
-
-  /* ============================================================
-     ESPORTAZIONE
-     ============================================================ */
 
   window.ULTRA_AUDIO = {
     ensureAudioContext,
