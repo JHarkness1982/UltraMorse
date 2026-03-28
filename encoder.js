@@ -65,12 +65,8 @@
     const payloadBits = logicalToPayloadBits(logical);
     const checksum = ULTRA.computeChecksumBits(payloadBits);
 
-    const full =
-      ULTRA.START_BITS +
-      payloadBits +
-      ULTRA.END_BITS +
-      checksum;
-
+    const full = payloadBits + checksum;
+     
     return full;
   }
 
