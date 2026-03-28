@@ -34,16 +34,21 @@
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
+    // Forma d’onda migliore per stabilità ultrasonica
     osc.type = "sawtooth";
     osc.frequency.value = ULTRA.FREQ;
 
-    gain.gain.value = 0.0;
+    // Volume iniziale a zero
+    gain.gain.setValueAtTime(0.0, ctx.currentTime);
 
     osc.connect(gain).connect(ctx.destination);
 
     const startTime = ctx.currentTime + 0.05;
-    osc.start(startTime);
+
+    // Fade-in iniziale
     gain.gain.setValueAtTime(0.0, startTime);
+
+    osc.start(startTime);
 
     let t = startTime;
     const ut = ULTRA.UT;
@@ -52,16 +57,18 @@
       if (!isTransmitting) break;
 
       if (b === "1") {
-        gain.gain.setValueAtTime(1.8, t);
+        gain.gain.setValueAtTime(1.8, t);   // tono acceso
       } else {
-        gain.gain.setValueAtTime(0.0, t);
+        gain.gain.setValueAtTime(0.0, t);   // tono spento
       }
 
       t += ut;
     }
 
-    gain.gain.setValueAtTime(0.0, t);
-    osc.stop(t + 0.05);
+    // Fade-out finale per evitare click
+    gain.gain.linearRampToValueAtTime(0.0, t + 0.05);
+
+    osc.stop(t + 0.1);
 
     isTransmitting = false;
 
@@ -131,10 +138,12 @@
     const ctx = audioCtx;
     if (!ctx) return 0;
 
-    const nyquist = ctx.sampleRate / 2;
-    const target = ULTRA.FREQ;
+    const sampleRate = ctx.sampleRate;
+    const fftSize = analyser.fftSize;
 
-    const index = Math.round(target / nyquist * freqData.length);
+    // Calcolo corretto dell’indice FFT
+    const index = Math.round(ULTRA.FREQ / sampleRate * fftSize);
+
     const amp = freqData[index] || 0;
 
     return amp;
@@ -147,7 +156,6 @@
   let listenInterval = null;
 
   function startListening(callback) {
-    // callback(energy) → chiamato ogni UT
     if (!isListening) return;
 
     if (listenInterval) clearInterval(listenInterval);
