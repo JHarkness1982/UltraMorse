@@ -2,6 +2,7 @@
    ULTRAMORSE — audio.js (TX bufferizzato con sine + fade-in)
    Versione corretta con fase continua (perfetta a 48000 Hz)
    + recordBuffer(durationMs) per RX bufferizzato
+   + renderWav(bitstream) per salvataggio file
    ============================================================ */
 
 (function () {
@@ -227,6 +228,85 @@
     });
   }
 
+  /* ============================================================
+     SALVATAGGIO FILE: renderWav(bitstream)
+     ============================================================ */
+
+  async function renderWav(bitstream) {
+    const ctx = await ensureAudioContext();
+    const sampleRate = ctx.sampleRate;
+    const ut   = ULTRA.UT;
+    const freq = ULTRA.FREQ;
+
+    const totalSamples = Math.floor(bitstream.length * ut * sampleRate);
+    const buffer = ctx.createBuffer(1, totalSamples, sampleRate);
+    const data   = buffer.getChannelData(0);
+
+    let writePos = 0;
+    let phase = 0;
+    const phaseIncrement = 2 * Math.PI * freq / sampleRate;
+    const fadeSamples = Math.floor(0.010 * sampleRate);
+
+    for (const bit of bitstream) {
+      const bitSamples = Math.floor(ut * sampleRate);
+
+      if (bit === "1") {
+        for (let i = 0; i < bitSamples; i++) {
+          let sample = Math.sin(phase);
+          phase += phaseIncrement;
+          if (i < fadeSamples) sample *= (i / fadeSamples);
+          data[writePos + i] = sample * 0.6;
+        }
+      } else {
+        for (let i = 0; i < bitSamples; i++) {
+          data[writePos + i] = 0;
+        }
+      }
+
+      writePos += bitSamples;
+    }
+
+    const wavBuffer = encodeWav(data, sampleRate);
+    return new Blob([wavBuffer], { type: "audio/wav" });
+  }
+
+  function encodeWav(samples, sampleRate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    function writeString(offset, str) {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    }
+
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, samples.length * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+
+    return buffer;
+  }
+
+  /* ============================================================
+     EXPORT
+     ============================================================ */
+
   window.ULTRA_AUDIO = {
     ensureAudioContext,
     transmitBits,
@@ -236,7 +316,8 @@
     startListening,
     stopListeningLoop,
     sampleUltrasonicEnergy,
-    recordBuffer
+    recordBuffer,
+    renderWav
   };
 
 })();
