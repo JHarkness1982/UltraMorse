@@ -60,7 +60,7 @@
     noiseFloor = noiseFloor * 0.98 + energy * 0.02;
 
     // Soglia = rumore + offset
-    threshold = noiseFloor + 12; // offset empirico
+    threshold = noiseFloor + 6; // offset empirico
   }
 
   /* ============================================================
