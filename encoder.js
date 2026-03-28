@@ -21,9 +21,10 @@
 
       chars.forEach((ch, cIndex) => {
         const morse = ULTRA.MORSE_MAP[ch];
-        if (!morse) return;
+        if (!morse) return; // carattere non supportato → ignorato
 
         const bin = ULTRA.morseToBinary(morse);
+        if (!bin) return; // protezione extra
 
         // Aggiungi i bit della lettera
         logical += bin;
