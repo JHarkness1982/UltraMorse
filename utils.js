@@ -7,8 +7,8 @@
    COSTANTI DEL PROTOCOLLO
    ------------------------------------------------------------ */
 
-const UT = 0.050;                 // 30 ms per unità temporale
-const FREQ = 1000;               // Frequenza ultrasuono
+const FREQ = 17500;   // frequenza portante in ultrasuoni
+const UT   = 0.100;   // durata di un bit in secondi (100 ms per ora, robusto)
 const START_BITS = "1111111111";  // 10 bit di tono
 const END_BITS   = "0000000000";  // 10 bit di silenzio
 const CHECKSUM_BITS = 4;          // 4 bit finali
