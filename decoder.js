@@ -1,12 +1,13 @@
 /* ============================================================
    ULTRAMORSE — decoder.js
-   Decoder avanzato: energia → bit → messaggio
+   Decoder avanzato: energia → bit → messaggio (live)
+   + decodeFromBuffer(buffer, sampleRate) per RX bufferizzato
    ============================================================ */
 
 (function () {
 
   /* ============================================================
-     STATO INTERNO DEL DECODER
+     STATO INTERNO DEL DECODER (LIVE)
      ============================================================ */
 
   let isDecoding = false;
@@ -69,7 +70,7 @@
   }
 
   /* ============================================================
-     RICONOSCIMENTO START / END
+     RICONOSCIMENTO START / END (LIVE)
      ============================================================ */
 
   function detectStart(buffer) {
@@ -81,7 +82,7 @@
   }
 
   /* ============================================================
-     DECODIFICA PAYLOAD
+     DECODIFICA PAYLOAD (LIVE, VECCHIA LOGICA)
      ============================================================ */
 
   function decodePayload(payloadBits) {
@@ -109,7 +110,7 @@
   }
 
   /* ============================================================
-     LOOP PRINCIPALE DI DECODIFICA
+     LOOP PRINCIPALE DI DECODIFICA LIVE
      ============================================================ */
 
   function processEnergy(energy) {
@@ -171,7 +172,7 @@
   }
 
   /* ============================================================
-     CONTROLLO DECODER
+     CONTROLLO DECODER LIVE
      ============================================================ */
 
   function startDecoder() {
@@ -188,13 +189,93 @@
   }
 
   /* ============================================================
+     RX BUFFERIZZATO: decodeFromBuffer(buffer, sampleRate)
+     ============================================================ */
+
+  function goertzelEnergy(samples, sampleRate, freq) {
+    const N = samples.length;
+    if (N === 0) return 0;
+
+    const k = Math.round(0.5 + (N * freq) / sampleRate);
+    const w = 2 * Math.PI * k / N;
+    const cosw = Math.cos(w);
+    const sinw = Math.sin(w);
+    const coeff = 2 * cosw;
+
+    let q0 = 0, q1 = 0, q2 = 0;
+
+    for (let i = 0; i < N; i++) {
+      q0 = coeff * q1 - q2 + samples[i];
+      q2 = q1;
+      q1 = q0;
+    }
+
+    const real = q1 - q2 * cosw;
+    const imag = q2 * sinw;
+    return real * real + imag * imag;
+  }
+
+  function decodeFromBuffer(buffer, sampleRate) {
+    const ut   = ULTRA.UT;    // es. 0.120
+    const freq = ULTRA.FREQ;  // 400 Hz
+    const header = "11110";
+
+    const samplesPerBit = Math.floor(ut * sampleRate);
+    if (samplesPerBit <= 0) {
+      return { bits: "", payloadBits: "" };
+    }
+
+    const totalBits = Math.floor(buffer.length / samplesPerBit);
+    if (totalBits <= 0) {
+      return { bits: "", payloadBits: "" };
+    }
+
+    const energies = new Array(totalBits);
+    let minE = Infinity;
+    let maxE = -Infinity;
+
+    for (let b = 0; b < totalBits; b++) {
+      const start = b * samplesPerBit;
+      const end = start + samplesPerBit;
+      const slice = buffer.subarray(start, end);
+      const e = goertzelEnergy(slice, sampleRate, freq);
+      energies[b] = e;
+      if (e < minE) minE = e;
+      if (e > maxE) maxE = e;
+    }
+
+    const threshold = minE + (maxE - minE) * 0.5;
+
+    let bits = "";
+    for (let b = 0; b < totalBits; b++) {
+      bits += energies[b] > threshold ? "1" : "0";
+    }
+
+    let payloadBits = "";
+    const startIndex = bits.indexOf(header);
+    if (startIndex >= 0) {
+      payloadBits = bits.slice(startIndex + header.length);
+      const lastOne = payloadBits.lastIndexOf("1");
+      if (lastOne >= 0) {
+        payloadBits = payloadBits.slice(0, lastOne + 1);
+      }
+    }
+
+    return {
+      bits,
+      payloadBits
+    };
+  }
+
+  /* ============================================================
      ESPORTAZIONE
      ============================================================ */
 
   window.ULTRA_DECODER = {
     startDecoder,
     stopDecoder,
-    processEnergy
+    processEnergy,
+    decodeFromBuffer
   };
 
 })();
