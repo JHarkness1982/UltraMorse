@@ -51,7 +51,7 @@
       if (!isTransmitting) break;
 
       if (b === "1") {
-        gain.gain.setValueAtTime(1.5, t);
+        gain.gain.setValueAtTime(1.8, t);
       } else {
         gain.gain.setValueAtTime(0.0, t);
       }
