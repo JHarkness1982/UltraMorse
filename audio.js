@@ -139,12 +139,12 @@
     if (!ctx) return 0;
 
     const sampleRate = ctx.sampleRate;
-    const fftSize = analyser.fftSize;
+const nyquist = sampleRate / 2;
 
-    // Calcolo corretto dell’indice FFT
-    const index = Math.round(ULTRA.FREQ / sampleRate * fftSize);
+// indice FFT corretto e sicuro
+const index = Math.round(ULTRA.FREQ / nyquist * freqData.length);
 
-    const amp = freqData[index] || 0;
+const amp = freqData[index] || 0;
 
     return amp;
   }
