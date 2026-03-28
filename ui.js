@@ -61,8 +61,13 @@
     toggleActive(modeOutBtn, modeInBtn);
     textLabel.textContent = "Testo da trasmettere";
     textArea.disabled = false;
+
     btnAction.style.display = "block";
     btnListen.style.display = "none";
+
+    // Aggiorna testo pulsante in base alla modalità
+    btnAction.textContent = (inputMode === "FILE") ? "Salva file" : "Trasmetti (Live)";
+
     setStatus("Modalità OUT selezionata.");
   };
 
@@ -71,8 +76,12 @@
     toggleActive(modeInBtn, modeOutBtn);
     textLabel.textContent = "Decoder (Live / File)";
     textArea.disabled = true;
+
     btnAction.style.display = "none";
     btnListen.style.display = "block";
+
+    btnListen.textContent = (inputMode === "FILE") ? "Decodifica da file" : "Ascolta (Live)";
+
     setStatus("Modalità IN selezionata.");
   };
 
@@ -83,12 +92,26 @@
   liveModeBtn.onclick = () => {
     inputMode = "LIVE";
     toggleActive(liveModeBtn, fileModeBtn);
+
+    if (mode === "OUT") {
+      btnAction.textContent = "Trasmetti (Live)";
+    } else {
+      btnListen.textContent = "Ascolta (Live)";
+    }
+
     setStatus("Modalità Live attiva.");
   };
 
   fileModeBtn.onclick = () => {
     inputMode = "FILE";
     toggleActive(fileModeBtn, liveModeBtn);
+
+    if (mode === "OUT") {
+      btnAction.textContent = "Salva file";
+    } else {
+      btnListen.textContent = "Decodifica da file";
+    }
+
     setStatus("Modalità File attiva.");
   };
 
@@ -97,6 +120,35 @@
      ------------------------------------------------------------ */
 
   btnAction.onclick = async () => {
+
+    /* ---------- FILE MODE: SALVA WAV ---------- */
+    if (mode === "OUT" && inputMode === "FILE") {
+      const text = textArea.value.trim();
+      if (!text) {
+        setStatus("Inserisci un testo da salvare.", true);
+        return;
+      }
+
+      const bits = ULTRA_ENCODER.buildMessageBits(text);
+      if (!bits) {
+        setStatus("Errore nella codifica del messaggio.", true);
+        return;
+      }
+
+      const blob = await ULTRA_AUDIO.renderWav(bits);
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ultramorse.wav";
+      a.click();
+
+      setStatus("File WAV salvato.");
+      return;
+    }
+
+    /* ---------- LIVE MODE: TRASMISSIONE ---------- */
+
     if (isTransmitting) {
       ULTRA_AUDIO.stopTransmission();
       isTransmitting = false;
@@ -137,13 +189,13 @@
 
   btnListen.onclick = async () => {
 
+    /* ---------- FILE MODE: DECODIFICA ---------- */
     if (inputMode === "FILE") {
-      // FILE MODE
       fileInput.click();
       return;
     }
 
-    // LIVE MODE
+    /* ---------- LIVE MODE ---------- */
     if (isListening) {
       stopListening();
       return;
@@ -201,7 +253,7 @@
       return;
     }
 
-    // Decodifica Morse (già gestita in utils.js)
+    // Decodifica Morse (se presente)
     const message = ULTRA.decodeBitsToMessage
       ? ULTRA.decodeBitsToMessage(payloadBits)
       : payloadBits;
