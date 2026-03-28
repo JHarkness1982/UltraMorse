@@ -23,7 +23,7 @@
       </div>
     </section>
 
-    <!-- Modalità: Live / File (per ora solo Live funzionante) -->
+    <!-- Modalità: Live / File -->
     <section class="section">
       <div class="toggle-group">
         <button class="toggle active" id="liveMode">Live</button>
@@ -47,9 +47,12 @@
     <!-- Info protocollo -->
     <section class="section">
       <div class="pill-row">
-        <div class="pill">UT: <span>20 ms</span></div>
-        <div class="pill">Freq: <span>19.5 kHz</span></div>
-        <div class="pill">Alfabeto: <span>A–Z, 0–9, . , ? ! / - + x : = '</span></div>
+        <div class="pill">UT: <span>120 ms</span></div>
+        <div class="pill">Freq: <span>400 Hz</span></div>
+        <div class="pill">Alfabeto: <span>A–Z, 0–9, . , ? ! / - + X : '</span></div>
+        <div class="pill">START: <span>11110</span></div>
+        <div class="pill">END: <span>0</span></div>
+        <div class="pill">Checksum: <span>4 bit</span></div>
       </div>
     </section>
 
@@ -86,9 +89,10 @@
         <div class="card-title">Note</div>
         <div class="small">
           • Live OUT: usa PC → smartphone per i primi test.<br />
-          • Live IN: decoder avanzato, sensibile a volume, distanza e rumore.<br />
+          • Live IN: decoder sensibile a volume, distanza e rumore.<br />
           • Accenti: trasformati in vocale + apostrofo (es. REALTÀ → REALTA').<br />
-          • START: 1111111111 · END: 0000000000 · checksum: 4 bit finali.
+          • START: 11110 · END: 0 · checksum: 4 bit.<br />
+          • Modalità File: carica un file audio per decodifica bufferizzata.
         </div>
       </div>
     </section>
